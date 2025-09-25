@@ -1,0 +1,113 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                   String            @id @default(uuid())
+  clerkUserId          String            @unique
+  name                 String?
+  email                String            @unique
+  username             String            @unique
+  imageUrl             String?
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+  credit               Int               @default(100)
+  stripeSubscriptionId String?           @unique
+  stripeSubscription   UserSubscription? @relation(fields: [stripeSubscriptionId], references: [id])
+  outreachEmails       OutreachEmail[]
+  userToProjects       UserToProject[]
+}
+
+model Project {
+  id             String          @id @default(uuid())
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  name           String
+  githubUrl      String
+  commits        Commit[]
+  userToProjects UserToProject[]
+}
+
+model UserToProject {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  userId    String
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, projectId])
+}
+
+model Commit {
+  id                 String   @id @default(cuid())
+  commitMessage      String
+  commitHash         String
+  commitAuthorName   String
+  commitAuthorAvatar String
+  commitDate         DateTime
+  summary            String
+  projectId          String
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  project            Project  @relation(fields: [projectId], references: [id])
+}
+
+model Company {
+  id             String   @id @default(cuid())
+  name           String   @unique
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  emailAddresses Email[]
+}
+
+model Email {
+  id            String          @id @default(cuid())
+  companyId     String
+  emailAddress  String
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  company       Company         @relation(fields: [companyId], references: [id])
+  OutreachEmail OutreachEmail[]
+
+  @@index([companyId, emailAddress])
+}
+
+model OutreachEmail {
+  id          String       @id @default(cuid())
+  subject     String
+  body        String
+  sentAt      DateTime     @default(now())
+  emailId     String
+  userId      String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  attachments Attachment[]
+  recipient   Email        @relation(fields: [emailId], references: [id])
+  sender      User         @relation(fields: [userId], references: [id])
+}
+
+model Attachment {
+  id              String        @id @default(uuid())
+  outreachEmailId String
+  file_name       String
+  file_url        String
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  outreachEmail   OutreachEmail @relation(fields: [outreachEmailId], references: [id])
+}
+
+model UserSubscription {
+  id                     String    @id @default(cuid())
+  userId                 String    @unique
+  stripeCustomerId       String    @unique @map(name: "stripe_customer_id")
+  stripeSubscriptionId   String?   @unique @map(name: "stripe_subscription_id")
+  stripePriceId          String?   @map(name: "stripe_price_id")
+  User                   User?
+}
